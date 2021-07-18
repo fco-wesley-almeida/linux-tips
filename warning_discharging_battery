@@ -1,0 +1,24 @@
+#!/bin/bash
+
+bat_folder='/sys/class/power_supply/BAT0'
+bat_mirror="$bat_folder/uevent"
+bat_energy_full=$(grep -Po 'POWER_SUPPLY_ENERGY_FULL=\K([0-9]*)' $bat_mirror) 
+bat_energy_now=$(grep -Po 'POWER_SUPPLY_ENERGY_NOW=\K([0-9]*)' $bat_mirror) 
+bat_power_now=$(grep -Po 'POWER_SUPPLY_POWER_NOW=\K([0-9]*)' $bat_mirror) 
+bat_status=$(grep -Po 'POWER_SUPPLY_STATUS=\K\w*' $bat_mirror)
+if [ $bat_status == 'Discharging' ]
+then
+	percent=$(bc <<< "scale=2; $bat_energy_now/$bat_energy_full")
+	percent=$(grep -o '[0-9]*' <<< $percent)
+	hours_rem=$(bc <<< "scale=2; $bat_energy_now/$bat_power_now")
+	hours=$(sed 's/\..*//' <<< $hours_rem)
+	minutes=$(sed 's/.*\.//' <<< $hours_rem)
+	minutes=$(bc <<< "0.6 * $minutes")
+	minutes=$(sed 's/\..*//' <<< $minutes)
+	notify-send "Low level battery ($percent%)" "Left $hours hours and $minutes minutes to discharge."
+fi
+
+if [ $bat_status == 'Unknown' ]
+then
+	notify-send "Battery charge" "Recognizing charging"
+fi
